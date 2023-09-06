@@ -164,7 +164,7 @@ impl<T> Queue<T> {
     /// assert!(q.is_empty());
     /// ```
     ///
-    /// The [`is_empty`] and [`is_full`] methods may behavior
+    /// The [`Queue::is_empty`] and [`Queue::is_full`] methods may behavior
     /// counter-intuitively when the queue is 0-length.
     ///
     /// ```
@@ -193,7 +193,7 @@ impl<T> Queue<T> {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
-    /// The [`is_empty`] and [`is_full`] methods may behavior
+    /// The [`Queue::is_empty`] and [`Queue::is_full`] methods may behavior
     /// counter-intuitively when the queue is 0-length.
     ///
     /// ```
