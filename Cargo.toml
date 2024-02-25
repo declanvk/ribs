@@ -13,3 +13,6 @@ nightly = []
 
 [dependencies]
 thiserror = "1.0.47"
+
+[target.'cfg(loom)'.dependencies]
+loom = "0.7"

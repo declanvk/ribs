@@ -11,3 +11,15 @@ To check the `kani` proofs;
 ```bash
 cargo kani
 ```
+
+### Loom
+
+```bash
+LOOM_MAX_PREEMPTIONS=3 RUSTFLAGS="--cfg loom" cargo test --release -- loom_verification
+```
+
+### Miri
+
+```bash
+cargo +nightly miri test
+```

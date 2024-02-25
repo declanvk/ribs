@@ -505,7 +505,7 @@ impl<T> Queue<T> {
                 // In this case, the ringbuffer occupies a continuous range and doesn't wrap around
                 // the end of the array (since `producer` > `consumer` and we know the queue is not
                 // empty)
-                unsafe { crate::polyfill::maybe_uninit_slice_assume_init_ref(left) },
+                unsafe { crate::stubs::maybe_uninit_slice_assume_init_ref(left) },
                 &[],
             )
         } else {
@@ -525,8 +525,8 @@ impl<T> Queue<T> {
             // array.len())`).
             unsafe {
                 (
-                    crate::polyfill::maybe_uninit_slice_assume_init_ref(left),
-                    crate::polyfill::maybe_uninit_slice_assume_init_ref(right),
+                    crate::stubs::maybe_uninit_slice_assume_init_ref(left),
+                    crate::stubs::maybe_uninit_slice_assume_init_ref(right),
                 )
             }
         }
@@ -540,7 +540,7 @@ impl<T> Queue<T> {
             let left = &mut self.storage[self.consumer..self.producer];
             (
                 // SAFETY: See `as_slices` for the explanation for this branch
-                unsafe { crate::polyfill::maybe_uninit_slice_assume_init_mut(left) },
+                unsafe { crate::stubs::maybe_uninit_slice_assume_init_mut(left) },
                 &mut [],
             )
         } else {
@@ -550,8 +550,8 @@ impl<T> Queue<T> {
             // SAFETY: See `as_slices` for the explanation for this branch
             unsafe {
                 (
-                    crate::polyfill::maybe_uninit_slice_assume_init_mut(left),
-                    crate::polyfill::maybe_uninit_slice_assume_init_mut(right),
+                    crate::stubs::maybe_uninit_slice_assume_init_mut(left),
+                    crate::stubs::maybe_uninit_slice_assume_init_mut(right),
                 )
             }
         }

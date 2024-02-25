@@ -32,11 +32,12 @@ pub mod sync;
 pub mod unsync;
 
 mod debug_with {
-    //! This module contains types that are helpful for debugging values that need
-    //! some additional context.
+    //! This module contains types that are helpful for debugging values that
+    //! need some additional context.
     //!
-    //! An example is the [`Queue`][crate::sync::mpmc::Queue] type, which needs access
-    //! to some additional parameters in order to display internal types.
+    //! An example is the [`Queue`][crate::sync::mpmc::Queue] type, which needs
+    //! access to some additional parameters in order to display internal
+    //! types.
     //!
     //! This module is inspired by [something similar in the Lark compiler project](https://github.com/lark-exploration/lark/blob/master/components/lark-debug-with/src/lib.rs).
 
@@ -48,12 +49,14 @@ mod debug_with {
     /// format!("{:?}", value.debug_with(cx))
     /// ```
     pub(crate) trait DebugWith<Cx: ?Sized> {
-        /// Store a reference to self and the context together to enable call [`Debug`] on the [`DebugCxPair`] type.
+        /// Store a reference to self and the context together to enable call
+        /// [`Debug`] on the [`DebugCxPair`] type.
         fn debug_with<'me>(&'me self, cx: &'me Cx) -> DebugCxPair<'me, &'me Self, Cx> {
             DebugCxPair { value: self, cx }
         }
 
-        /// Store self and the context together to enable call [`Debug`] on the [`DebugCxPair`] type.
+        /// Store self and the context together to enable call [`Debug`] on the
+        /// [`DebugCxPair`] type.
         fn into_debug_with<'me>(self, cx: &'me Cx) -> DebugCxPair<'me, Self, Cx>
         where
             Self: Sized,
@@ -65,7 +68,8 @@ mod debug_with {
         fn fmt_with(&self, cx: &Cx, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result;
     }
 
-    /// A helper struct that carries a value that implement [`DebugWith`] alongside a compatible context.
+    /// A helper struct that carries a value that implement [`DebugWith`]
+    /// alongside a compatible context.
     pub(crate) struct DebugCxPair<'me, Value, Cx: ?Sized>
     where
         Value: DebugWith<Cx>,
@@ -105,9 +109,33 @@ mod debug_with {
     }
 }
 
-mod polyfill {
-    //! Module containing copies of Rust standard library unstable functions for
-    //! use outside of the nightly distribution.
+mod stubs {
+    //! Module containing copies of Rust standard library types that have been
+    //! modified or extracted in some way.
+
+    #[cfg(loom)]
+    pub use loom::{
+        cell::UnsafeCell,
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        },
+    };
+
+    #[cfg(all(loom, test))]
+    pub use loom::{model, thread};
+
+    #[cfg(not(loom))]
+    pub use std::{
+        cell::UnsafeCell,
+        sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        },
+    };
+
+    #[cfg(all(not(loom), test))]
+    pub use std::thread;
 
     /// Assuming all the elements are initialized, get a slice to them.
     ///
@@ -176,5 +204,15 @@ mod polyfill {
             // mutable reference which is also guaranteed to be valid for writes.
             unsafe { &mut *(slice as *mut [std::mem::MaybeUninit<T>] as *mut [T]) }
         }
+    }
+
+    /// Stub of `loom::model` that just runs the given closure, with no
+    /// additional concurrent permutations
+    #[cfg(all(not(loom), test))]
+    pub fn model<F>(f: F)
+    where
+        F: Fn() + Sync + Send + 'static,
+    {
+        f()
     }
 }
