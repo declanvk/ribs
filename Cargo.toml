@@ -12,6 +12,7 @@ license = "MIT OR Apache-2.0"
 nightly = []
 
 [dependencies]
+crossbeam-utils = "0.8.19"
 thiserror = "1.0.47"
 
 [target.'cfg(loom)'.dependencies]

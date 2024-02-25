@@ -6,6 +6,8 @@ use std::{
     mem::{self, MaybeUninit},
 };
 
+use crossbeam_utils::Backoff;
+
 use crate::{
     debug_with::DebugWith,
     stubs::{Arc, AtomicUsize, Ordering, UnsafeCell},
@@ -43,10 +45,46 @@ impl<T> Queue<T> {
         self.0.capacity()
     }
 
+    /// Attempts to push an element into the queue.
+    ///
+    /// If the queue is full, the element is returned back as an error.
+    pub fn push(&self, mut elem: T) -> Result<(), T> {
+        let backoff = Backoff::new();
+
+        loop {
+            match self.try_push(elem) {
+                Ok(()) => break Ok(()),
+                Err(TryPushError::Busy(rejected)) => {
+                    backoff.spin();
+                    elem = rejected;
+                },
+                Err(TryPushError::Full(rejected)) => break Err(rejected),
+            }
+        }
+    }
+
     /// Attempt to push a new item to the queue, failing if the queue is
     /// full or there is a concurrent operation interfering.
     pub fn try_push(&self, elem: T) -> Result<(), TryPushError<T>> {
         self.0.try_push(elem)
+    }
+
+    /// Attempts to pop an element from the queue.
+    ///
+    /// If the queue is empty, None is returned.
+    pub fn pop(&self) -> Option<T> {
+        let backoff = Backoff::new();
+
+        loop {
+            match self.try_pop() {
+                Ok(v) => break Some(v),
+                Err(TryPopError::Busy) => {
+                    backoff.spin(); // should wait a little while since another
+                                    // thread made progress
+                },
+                Err(TryPopError::Empty) => break None,
+            }
+        }
     }
 
     /// Attempt to pop an item from the queue, failing if the queue is empty
@@ -1163,6 +1201,16 @@ mod tests {
     }
 
     #[test]
+    fn push_and_pop_items_into_queues() {
+        for (num_blocks, block_size) in PUSH_AND_POP_PARAMS {
+            let q = Queue::with_block_params(num_blocks, block_size);
+
+            push_to_full_then_pop_to_empty(&q);
+            push_to_full_then_pop_to_empty(&q);
+        }
+    }
+
+    #[test]
     fn push_and_pop_zero_sized_items_into_queue() {
         let q = Queue::with_block_params(5, 5);
 
@@ -1195,6 +1243,21 @@ mod tests {
         }
 
         assert_eq!(q.try_pop(), Err(TryPopError::Empty));
+    }
+
+    fn push_to_full_then_pop_to_empty(q: &Queue<usize>) {
+        for idx in 0..q.capacity().upper {
+            q.push(idx).unwrap();
+        }
+
+        assert_eq!(q.push(q.capacity().upper), Err(q.capacity().upper));
+
+        for expected_idx in 0..q.capacity().upper {
+            let idx = q.pop().unwrap();
+            assert_eq!(expected_idx, idx);
+        }
+
+        assert_eq!(q.pop(), None);
     }
 
     #[test]
