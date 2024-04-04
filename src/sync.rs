@@ -554,11 +554,14 @@ impl<T> QueueInner<T> {
     }
 }
 
-/// SAFETY: TODO
-unsafe impl<T> Send for QueueInner<T> where T: Send {}
-
-/// SAFETY: TODO
-unsafe impl<T> Sync for QueueInner<T> where T: Sync {}
+/// SAFETY: The queue is safe to share across threads even though it has
+/// internal mutability because access to the internal data is synchronized by
+/// use of atomics according the algorithm described in "{BBQ}: A Block-based
+/// Bounded Queue for Exchanging Data and Profiling."
+///
+/// The `T: Send` bound is required because an item inserted in the queue on one
+/// thread could be removed from the queue in a different thread.
+unsafe impl<T> Sync for QueueInner<T> where T: Send {}
 
 impl<T> Drop for QueueInner<T> {
     fn drop(&mut self) {
@@ -983,6 +986,11 @@ impl<T> DebugWith<QueueParameters> for Block<T> {
 struct PackedHead(AtomicUsize);
 
 impl PackedHead {
+    /// Created a new packed representation of the index over blocks with an
+    /// associated version number.
+    ///
+    /// The [`QueueParameters`] reference is used to determine how many bits are
+    /// required for the index into the block array.
     fn new(params: &QueueParameters, version: usize, index: usize) -> Self {
         assert!(params.check_version_in_range(version) && params.check_index_in_range(index));
         let raw_value =
@@ -991,6 +999,15 @@ impl PackedHead {
         Self(AtomicUsize::new(raw_value))
     }
 
+    /// Loads the packed header index value and unpacks it.
+    ///
+    /// `load` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. Possible values are [`SeqCst`],
+    /// [`Acquire`] and [`Relaxed`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Release`] or [`AcqRel`].
     fn load(&self, params: &QueueParameters, ordering: Ordering) -> UnpackedHead {
         let raw_value = self.0.load(ordering);
         let index = raw_value & params.index_mask;
@@ -999,6 +1016,15 @@ impl PackedHead {
         UnpackedHead { version, index }
     }
 
+    /// Packs the given header index value and stores it.
+    ///
+    /// `store` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.  Possible values are [`SeqCst`],
+    /// [`Release`] and [`Relaxed`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
     fn store(&self, params: &QueueParameters, value: UnpackedHead, ordering: Ordering) {
         let raw_value = ((value.version << params.version_shift) & params.version_mask)
             | (value.index & params.index_mask);
@@ -1006,6 +1032,14 @@ impl PackedHead {
         self.0.store(raw_value, ordering)
     }
 
+    /// Packs the given header index value, then finds the maximum of the
+    /// current packed value and the other packed value, and sets the new value
+    /// to the result.
+    ///
+    /// `fetch_max` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note
+    /// that using [`Acquire`] makes the store part of this operation
+    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
     fn fetch_max(
         &self,
         params: &QueueParameters,
@@ -1077,6 +1111,11 @@ impl UnpackedHead {
 struct PackedCursor(AtomicUsize);
 
 impl PackedCursor {
+    /// Created a new packed representation of the index inside of a block with
+    /// an associated version number.
+    ///
+    /// The [`QueueParameters`] reference is used to determine how many bits are
+    /// required for the index.
     fn new(params: &QueueParameters, version: usize, offset: usize) -> Self {
         assert!(params.check_version_in_range(version) && params.check_offset_in_range(offset));
 
@@ -1086,6 +1125,15 @@ impl PackedCursor {
         Self(AtomicUsize::new(raw_value))
     }
 
+    /// Loads the packed cursor index and unpacks it.
+    ///
+    /// `load` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. Possible values are [`SeqCst`],
+    /// [`Acquire`] and [`Relaxed`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Release`] or [`AcqRel`].
     fn load(&self, params: &QueueParameters, ordering: Ordering) -> UnpackedCursor {
         let raw_value = self.0.load(ordering);
         let offset = raw_value & params.offset_mask;
@@ -1094,6 +1142,15 @@ impl PackedCursor {
         UnpackedCursor { version, offset }
     }
 
+    /// Packs the given cursor index value and stores it.
+    ///
+    /// `store` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation.  Possible values are [`SeqCst`],
+    /// [`Release`] and [`Relaxed`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
     fn store(&self, params: &QueueParameters, value: UnpackedCursor, ordering: Ordering) {
         let raw_value = ((value.version << params.version_shift) & params.version_mask)
             | (value.offset & params.offset_mask);
@@ -1101,6 +1158,15 @@ impl PackedCursor {
         self.0.store(raw_value, ordering)
     }
 
+    /// Increments the current packed cursor index by the given increment, and
+    /// returns the unpacked previous cursor index value.
+    ///
+    /// This operation wraps around on overflow.
+    ///
+    /// `fetch_add` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note
+    /// that using [`Acquire`] makes the store part of this operation
+    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
     fn fetch_add(
         &self,
         params: &QueueParameters,
@@ -1114,6 +1180,14 @@ impl PackedCursor {
         UnpackedCursor { version, offset }
     }
 
+    /// Packs the given cursor index value, then finds the maximum of the
+    /// current packed value and the other packed value, and sets the new value
+    /// to the result.
+    ///
+    /// `fetch_max` takes an [`Ordering`] argument which describes the memory
+    /// ordering of this operation. All ordering modes are possible. Note
+    /// that using [`Acquire`] makes the store part of this operation
+    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
     fn fetch_max(
         &self,
         params: &QueueParameters,

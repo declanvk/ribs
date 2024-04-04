@@ -57,7 +57,7 @@ mod debug_with {
 
         /// Store self and the context together to enable call [`Debug`] on the
         /// [`DebugCxPair`] type.
-        fn into_debug_with<'me>(self, cx: &'me Cx) -> DebugCxPair<'me, Self, Cx>
+        fn into_debug_with(self, cx: &Cx) -> DebugCxPair<'_, Self, Cx>
         where
             Self: Sized,
         {
