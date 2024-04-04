@@ -28,6 +28,9 @@ compile_error!(
     "The library only works when it has access to atomic instructions for values of 64 bits"
 );
 
+#[cfg(all(shuttle, loom))]
+compile_error!("This library only works when one of the features `shuttle` or `loom` is enabled");
+
 pub mod sync;
 pub mod unsync;
 
@@ -125,7 +128,19 @@ mod stubs {
     #[cfg(all(loom, test))]
     pub use loom::{model, thread};
 
-    #[cfg(not(loom))]
+    #[cfg(shuttle)]
+    pub use shuttle::sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    };
+
+    #[cfg(shuttle)]
+    pub use std::cell::UnsafeCell;
+
+    #[cfg(all(shuttle, test))]
+    pub use shuttle::thread;
+
+    #[cfg(all(not(loom), not(shuttle)))]
     pub use std::{
         cell::UnsafeCell,
         sync::{
@@ -134,7 +149,7 @@ mod stubs {
         },
     };
 
-    #[cfg(all(not(loom), test))]
+    #[cfg(all(not(loom), not(shuttle), test))]
     pub use std::thread;
 
     /// Assuming all the elements are initialized, get a slice to them.
@@ -208,11 +223,21 @@ mod stubs {
 
     /// Stub of `loom::model` that just runs the given closure, with no
     /// additional concurrent permutations
-    #[cfg(all(not(loom), test))]
+    #[cfg(all(not(loom), not(shuttle), test))]
     pub fn model<F>(f: F)
     where
         F: Fn() + Sync + Send + 'static,
     {
         f()
+    }
+
+    /// Stub of `loom::model` that just runs the given closure, with no
+    /// additional concurrent permutations
+    #[cfg(all(shuttle, test))]
+    pub fn model<F>(f: F)
+    where
+        F: Fn() + Sync + Send + 'static,
+    {
+        shuttle::check_pct(f, 10_000, 100)
     }
 }
