@@ -714,19 +714,30 @@ impl QueueParameters {
     /// Calculate the block parameters using a heuristic for number of blocks
     /// based on the desired maximum capacity of the queue
     fn from_block_heuristic(min_capacity: usize) -> Result<Self, Overflow> {
-        let num_blocks_log = (min_capacity.ilog2() / 4).max(1);
+        let num_blocks_log = (min_capacity.ilog2().div_ceil(4)).max(1);
+        let num_blocks = 2usize.pow(num_blocks_log);
+        let block_size = (min_capacity.div_ceil(num_blocks)).max(1);
+
+        assert!(
+            (block_size * num_blocks) >= min_capacity,
+            "Expected ({} * {}) >= {}",
+            block_size,
+            num_blocks,
+            min_capacity
+        );
+
         // We add 1 to the number of blocks so that the minimum capacity is accurate
-        let num_blocks = 2usize.pow(num_blocks_log) + 1;
-        let block_size = (min_capacity / num_blocks).max(1);
+        let params = Self::from_block_parameters(num_blocks + 1, block_size);
 
-        assert!((block_size * num_blocks) >= min_capacity);
-
-        let params = Self::from_block_parameters(num_blocks, block_size);
-
-        debug_assert!(params
-            .as_ref()
-            .map(|p| p.capacity.lower >= min_capacity)
-            .unwrap_or(true));
+        debug_assert!(
+            params
+                .as_ref()
+                .map(|p| p.capacity.lower >= min_capacity)
+                .unwrap_or(true),
+            "{:?} {}",
+            params,
+            min_capacity
+        );
 
         params
     }
@@ -783,12 +794,17 @@ impl QueueParameters {
             None => return Err(Overflow),
         };
 
+        let min_capacity = match num_blocks.saturating_sub(1).checked_mul(block_size) {
+            Some(val) => val,
+            None => return Err(Overflow),
+        };
+
         Ok(Self {
             num_blocks,
             block_size,
             capacity: Capacity {
                 upper: max_capacity,
-                lower: max_capacity.saturating_sub(block_size.saturating_sub(1)),
+                lower: min_capacity,
             },
             version_mask,
             version_shift,
@@ -1255,7 +1271,7 @@ mod tests {
 
     #[test]
     fn create_queue() {
-        assert_eq!(Queue::<u8>::with_block_params(5, 5).capacity(), (21, 25));
+        assert_eq!(Queue::<u8>::with_block_params(5, 5).capacity(), (20, 25));
         assert_eq!(Queue::<u8>::with_block_params(0, 5).capacity(), (0, 0));
         assert_eq!(Queue::<u8>::with_block_params(0, 0).capacity(), (0, 0));
         assert_eq!(Queue::<u8>::with_block_params(5, 0).capacity(), (0, 0));
