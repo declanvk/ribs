@@ -2,7 +2,7 @@
 //! different threads
 
 use std::{
-    fmt,
+    fmt::{self, Debug},
     mem::{self, MaybeUninit},
 };
 
@@ -242,7 +242,7 @@ impl<T> QueueInner<T> {
     }
 
     /// Write the new data to the [`Block`] at the given offset, then
-    /// incremented the commited [`Cursor`].
+    /// incremented the commited [`Cursor`][PackedCursor].
     ///
     /// This operations marks the data as ready to read.
     fn commit_entry(&self, entry: EntryDescriptor<T>, elem: T) {
@@ -814,7 +814,7 @@ impl QueueParameters {
     }
 
     /// This method calculates the bit length of the `index` bit-segment inside
-    /// of [`Head`] values.
+    /// of [`Head`][PackedHead] values.
     ///
     /// The `index` bit length is determined by the number of blocks in the
     /// queue.
@@ -828,7 +828,7 @@ impl QueueParameters {
     }
 
     /// This method calculates the bit length of the `offset` bit-segment inside
-    /// of [`Cursor`] values.
+    /// of [`Cursor`][PackedCursor] values.
     ///
     /// The `offset` bit length is determined by the number of items in a block.
     const fn offset_bit_length(block_size: usize) -> Option<u32> {
@@ -844,7 +844,7 @@ impl QueueParameters {
     }
 
     /// This method calculates the bit length of the `version` bit-segment
-    /// inside of [`Cursor`] and [`Head`] values.
+    /// inside of [`Cursor`][PackedCursor] and [`Head`][PackedHead] values.
     ///
     /// The `version` bit length is determined by the number of items in a block
     /// and the number of blocks.
@@ -1018,12 +1018,12 @@ impl PackedHead {
     /// Loads the packed header index value and unpacks it.
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation. Possible values are [`SeqCst`],
-    /// [`Acquire`] and [`Relaxed`].
+    /// ordering of this operation. Possible values are [`SeqCst`][Ordering::SeqCst],
+    /// [`Acquire`][Ordering::Acquire] and [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Release`] or [`AcqRel`].
+    /// Panics if `order` is [`Release`][Ordering::Release] or [`AcqRel`][Ordering::AcqRel].
     fn load(&self, params: &QueueParameters, ordering: Ordering) -> UnpackedHead {
         let raw_value = self.0.load(ordering);
         let index = raw_value & params.index_mask;
@@ -1035,12 +1035,12 @@ impl PackedHead {
     /// Packs the given header index value and stores it.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation.  Possible values are [`SeqCst`],
-    /// [`Release`] and [`Relaxed`].
+    /// ordering of this operation.  Possible values are [`SeqCst`][Ordering::SeqCst],
+    /// [`Release`][Ordering::Release] and [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+    /// Panics if `order` is [`Acquire`][Ordering::Acquire] or [`AcqRel`][Ordering::AcqRel].
     fn store(&self, params: &QueueParameters, value: UnpackedHead, ordering: Ordering) {
         let raw_value = ((value.version << params.version_shift) & params.version_mask)
             | (value.index & params.index_mask);
@@ -1054,8 +1054,8 @@ impl PackedHead {
     ///
     /// `fetch_max` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note
-    /// that using [`Acquire`] makes the store part of this operation
-    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
+    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this operation
+    /// [`Relaxed`][Ordering::Relaxed], and using [`Release`][Ordering::Release] makes the load part [`Relaxed`][Ordering::Relaxed].
     fn fetch_max(
         &self,
         params: &QueueParameters,
@@ -1144,12 +1144,12 @@ impl PackedCursor {
     /// Loads the packed cursor index and unpacks it.
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation. Possible values are [`SeqCst`],
-    /// [`Acquire`] and [`Relaxed`].
+    /// ordering of this operation. Possible values are [`SeqCst`][Ordering::SeqCst],
+    /// [`Acquire`][Ordering::Acquire] and [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Release`] or [`AcqRel`].
+    /// Panics if `order` is [`Release`][Ordering::Release] or [`AcqRel`][Ordering::AcqRel].
     fn load(&self, params: &QueueParameters, ordering: Ordering) -> UnpackedCursor {
         let raw_value = self.0.load(ordering);
         let offset = raw_value & params.offset_mask;
@@ -1161,12 +1161,12 @@ impl PackedCursor {
     /// Packs the given cursor index value and stores it.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation.  Possible values are [`SeqCst`],
-    /// [`Release`] and [`Relaxed`].
+    /// ordering of this operation.  Possible values are [`SeqCst`][Ordering::SeqCst],
+    /// [`Release`][Ordering::Release] and [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+    /// Panics if `order` is [`Acquire`][Ordering::Acquire] or [`AcqRel`][Ordering::AcqRel].
     fn store(&self, params: &QueueParameters, value: UnpackedCursor, ordering: Ordering) {
         let raw_value = ((value.version << params.version_shift) & params.version_mask)
             | (value.offset & params.offset_mask);
@@ -1181,8 +1181,8 @@ impl PackedCursor {
     ///
     /// `fetch_add` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note
-    /// that using [`Acquire`] makes the store part of this operation
-    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
+    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this operation
+    /// [`Relaxed`][Ordering::Relaxed], and using [`Release`][Ordering::Release] makes the load part [`Relaxed`][Ordering::Relaxed].
     fn fetch_add(
         &self,
         params: &QueueParameters,
@@ -1202,8 +1202,8 @@ impl PackedCursor {
     ///
     /// `fetch_max` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note
-    /// that using [`Acquire`] makes the store part of this operation
-    /// [`Relaxed`], and using [`Release`] makes the load part [`Relaxed`].
+    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this operation
+    /// [`Relaxed`][Ordering::Relaxed], and using [`Release`][Ordering::Release] makes the load part [`Relaxed`][Ordering::Relaxed].
     fn fetch_max(
         &self,
         params: &QueueParameters,
@@ -1474,7 +1474,7 @@ mod tests {
 
     impl DropCounter {
         pub(crate) fn new(counter: &Arc<AtomicUsize>) -> Self {
-            let value = Self(Arc::clone(&counter));
+            let value = Self(Arc::clone(counter));
             value.0.fetch_add(1, Ordering::Relaxed);
             value
         }
@@ -1644,10 +1644,7 @@ mod loom_verification {
 
             for _ in 0..q.capacity().upper {
                 let q = q.clone();
-                consumer_threads.push(thread::spawn(move || match q.try_pop() {
-                    Ok(v) => Some(v),
-                    Err(TryPopError::Busy | TryPopError::Empty) => None,
-                }))
+                consumer_threads.push(thread::spawn(move || q.try_pop().ok()))
             }
 
             producer_threads.into_iter().for_each(|t| t.join().unwrap());
@@ -1661,7 +1658,7 @@ mod loom_verification {
 
             values.sort();
             assert!(
-                values == &[0, 1] || values == &[0] || values == &[1] || values == &[],
+                values == [0, 1] || values == [0] || values == [1] || values.is_empty(),
                 "Values did not match: {:?}",
                 values
             );
@@ -1701,7 +1698,7 @@ mod loom_verification {
 
                     values.sort();
                     assert!(
-                        values == &[0, 1] || values == &[0] || values == &[1] || values.is_empty(),
+                        values == [0, 1] || values == [0] || values == [1] || values.is_empty(),
                         "unexpected values: {:?}",
                         values
                     );
