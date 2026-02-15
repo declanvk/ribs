@@ -38,7 +38,7 @@ mod debug_with {
     //! This module contains types that are helpful for debugging values that
     //! need some additional context.
     //!
-    //! An example is the [`Queue`][crate::sync::mpmc::Queue] type, which needs
+    //! An example is the [`Queue`][crate::sync::Queue] type, which needs
     //! access to some additional parameters in order to display internal
     //! types.
     //!
@@ -55,15 +55,6 @@ mod debug_with {
         /// Store a reference to self and the context together to enable call
         /// [`Debug`] on the [`DebugCxPair`] type.
         fn debug_with<'me>(&'me self, cx: &'me Cx) -> DebugCxPair<'me, &'me Self, Cx> {
-            DebugCxPair { value: self, cx }
-        }
-
-        /// Store self and the context together to enable call [`Debug`] on the
-        /// [`DebugCxPair`] type.
-        fn into_debug_with(self, cx: &Cx) -> DebugCxPair<'_, Self, Cx>
-        where
-            Self: Sized,
-        {
             DebugCxPair { value: self, cx }
         }
 

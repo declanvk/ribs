@@ -3,7 +3,7 @@ name = "ribs"
 version = "0.1.0"
 repository = "https://github.com/declanvk/ribs"
 readme = "README.md"
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -12,7 +12,7 @@ license = "MIT OR Apache-2.0"
 nightly = []
 
 [dependencies]
-crossbeam-utils = "0.8.19"
+crossbeam-utils = "0.8"
 thiserror = "1.0.47"
 
 [target.'cfg(loom)'.dependencies]
@@ -20,3 +20,6 @@ loom = "0.7"
 
 [target.'cfg(shuttle)'.dependencies]
 shuttle = "0.7"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(shuttle)', 'cfg(loom)', 'cfg(kani)'] }
