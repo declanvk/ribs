@@ -31,8 +31,8 @@ compile_error!(
 #[cfg(all(shuttle, loom))]
 compile_error!("This library only works when one of the features `shuttle` or `loom` is enabled");
 
-pub mod sync;
-pub mod unsync;
+mod sync;
+pub use sync::{Capacity, Queue, TryPopError, TryPushError};
 
 mod debug_with {
     //! This module contains types that are helpful for debugging values that

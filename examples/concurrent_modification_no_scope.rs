@@ -1,6 +1,6 @@
 use std::{collections::HashSet, thread};
 
-use ribs::sync::Queue;
+use ribs::Queue;
 
 const NUM_PRODUCERS: usize = 2;
 const NUM_CONSUMERS: usize = 1;
