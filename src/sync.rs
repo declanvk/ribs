@@ -80,7 +80,7 @@ impl<T> Queue<T> {
                 Ok(v) => break Some(v),
                 Err(TryPopError::Busy) => {
                     backoff.spin(); // should wait a little while since another
-                                    // thread made progress
+                    // thread made progress
                 },
                 Err(TryPopError::Empty) => break None,
             }
@@ -185,10 +185,10 @@ impl<T> QueueInner<T> {
                 AllocateEntryResult::BlockDone => {
                     match self.advance_producer_head_retry_new(producer_head) {
                         Err(AdvanceProducerHeadError::NoEntry) => {
-                            return Err(TryPushError::Full(elem))
+                            return Err(TryPushError::Full(elem));
                         },
                         Err(AdvanceProducerHeadError::NotAvailable) => {
-                            return Err(TryPushError::Busy(elem))
+                            return Err(TryPushError::Busy(elem));
                         },
                         Ok(()) => {
                             continue 'retry;
@@ -642,7 +642,7 @@ pub enum TryPopError {
 /// data:
 ///
 /// ```
-/// # use ribs::sync::{Queue, TryPushError};
+/// # use ribs::{Queue, TryPushError};
 /// let q = Queue::with_block_params(1, 2);
 ///
 /// q.try_push(1).unwrap();
@@ -1018,12 +1018,14 @@ impl PackedHead {
     /// Loads the packed header index value and unpacks it.
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation. Possible values are [`SeqCst`][Ordering::SeqCst],
-    /// [`Acquire`][Ordering::Acquire] and [`Relaxed`][Ordering::Relaxed].
+    /// ordering of this operation. Possible values are
+    /// [`SeqCst`][Ordering::SeqCst], [`Acquire`][Ordering::Acquire] and
+    /// [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Release`][Ordering::Release] or [`AcqRel`][Ordering::AcqRel].
+    /// Panics if `order` is [`Release`][Ordering::Release] or
+    /// [`AcqRel`][Ordering::AcqRel].
     fn load(&self, params: &QueueParameters, ordering: Ordering) -> UnpackedHead {
         let raw_value = self.0.load(ordering);
         let index = raw_value & params.index_mask;
@@ -1035,12 +1037,14 @@ impl PackedHead {
     /// Packs the given header index value and stores it.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation.  Possible values are [`SeqCst`][Ordering::SeqCst],
-    /// [`Release`][Ordering::Release] and [`Relaxed`][Ordering::Relaxed].
+    /// ordering of this operation.  Possible values are
+    /// [`SeqCst`][Ordering::SeqCst], [`Release`][Ordering::Release] and
+    /// [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Acquire`][Ordering::Acquire] or [`AcqRel`][Ordering::AcqRel].
+    /// Panics if `order` is [`Acquire`][Ordering::Acquire] or
+    /// [`AcqRel`][Ordering::AcqRel].
     fn store(&self, params: &QueueParameters, value: UnpackedHead, ordering: Ordering) {
         let raw_value = ((value.version << params.version_shift) & params.version_mask)
             | (value.index & params.index_mask);
@@ -1054,8 +1058,10 @@ impl PackedHead {
     ///
     /// `fetch_max` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note
-    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this operation
-    /// [`Relaxed`][Ordering::Relaxed], and using [`Release`][Ordering::Release] makes the load part [`Relaxed`][Ordering::Relaxed].
+    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this
+    /// operation [`Relaxed`][Ordering::Relaxed], and using
+    /// [`Release`][Ordering::Release] makes the load part
+    /// [`Relaxed`][Ordering::Relaxed].
     fn fetch_max(
         &self,
         params: &QueueParameters,
@@ -1144,12 +1150,14 @@ impl PackedCursor {
     /// Loads the packed cursor index and unpacks it.
     ///
     /// `load` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation. Possible values are [`SeqCst`][Ordering::SeqCst],
-    /// [`Acquire`][Ordering::Acquire] and [`Relaxed`][Ordering::Relaxed].
+    /// ordering of this operation. Possible values are
+    /// [`SeqCst`][Ordering::SeqCst], [`Acquire`][Ordering::Acquire] and
+    /// [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Release`][Ordering::Release] or [`AcqRel`][Ordering::AcqRel].
+    /// Panics if `order` is [`Release`][Ordering::Release] or
+    /// [`AcqRel`][Ordering::AcqRel].
     fn load(&self, params: &QueueParameters, ordering: Ordering) -> UnpackedCursor {
         let raw_value = self.0.load(ordering);
         let offset = raw_value & params.offset_mask;
@@ -1161,12 +1169,14 @@ impl PackedCursor {
     /// Packs the given cursor index value and stores it.
     ///
     /// `store` takes an [`Ordering`] argument which describes the memory
-    /// ordering of this operation.  Possible values are [`SeqCst`][Ordering::SeqCst],
-    /// [`Release`][Ordering::Release] and [`Relaxed`][Ordering::Relaxed].
+    /// ordering of this operation.  Possible values are
+    /// [`SeqCst`][Ordering::SeqCst], [`Release`][Ordering::Release] and
+    /// [`Relaxed`][Ordering::Relaxed].
     ///
     /// # Panics
     ///
-    /// Panics if `order` is [`Acquire`][Ordering::Acquire] or [`AcqRel`][Ordering::AcqRel].
+    /// Panics if `order` is [`Acquire`][Ordering::Acquire] or
+    /// [`AcqRel`][Ordering::AcqRel].
     fn store(&self, params: &QueueParameters, value: UnpackedCursor, ordering: Ordering) {
         let raw_value = ((value.version << params.version_shift) & params.version_mask)
             | (value.offset & params.offset_mask);
@@ -1181,8 +1191,10 @@ impl PackedCursor {
     ///
     /// `fetch_add` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note
-    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this operation
-    /// [`Relaxed`][Ordering::Relaxed], and using [`Release`][Ordering::Release] makes the load part [`Relaxed`][Ordering::Relaxed].
+    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this
+    /// operation [`Relaxed`][Ordering::Relaxed], and using
+    /// [`Release`][Ordering::Release] makes the load part
+    /// [`Relaxed`][Ordering::Relaxed].
     fn fetch_add(
         &self,
         params: &QueueParameters,
@@ -1202,8 +1214,10 @@ impl PackedCursor {
     ///
     /// `fetch_max` takes an [`Ordering`] argument which describes the memory
     /// ordering of this operation. All ordering modes are possible. Note
-    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this operation
-    /// [`Relaxed`][Ordering::Relaxed], and using [`Release`][Ordering::Release] makes the load part [`Relaxed`][Ordering::Relaxed].
+    /// that using [`Acquire`][Ordering::Acquire] makes the store part of this
+    /// operation [`Relaxed`][Ordering::Relaxed], and using
+    /// [`Release`][Ordering::Release] makes the load part
+    /// [`Relaxed`][Ordering::Relaxed].
     fn fetch_max(
         &self,
         params: &QueueParameters,
@@ -1263,7 +1277,7 @@ impl UnpackedCursor {
     }
 }
 
-#[cfg(any(test, kani))]
+#[cfg(all(any(test, kani), not(any(loom, feature = "shuttle"))))]
 mod tests {
     use std::{cell::RefCell, rc::Rc};
 

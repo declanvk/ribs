@@ -5,21 +5,23 @@ repository = "https://github.com/declanvk/ribs"
 readme = "README.md"
 edition = "2024"
 license = "MIT OR Apache-2.0"
+rust-version = "1.93"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-nightly = []
+shuttle = ["dep:shuttle"]
 
 [dependencies]
 crossbeam-utils = "0.8"
 thiserror = "1.0.47"
+shuttle = { version = "0.8", optional = true }
 
 [target.'cfg(loom)'.dependencies]
 loom = "0.7"
 
-[target.'cfg(shuttle)'.dependencies]
-shuttle = "0.7"
-
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(shuttle)', 'cfg(loom)', 'cfg(kani)'] }
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(loom)', 'cfg(kani)'] }
+
+[package.metadata.kani-verifier]
+version = "0.67.0"
